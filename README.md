@@ -196,7 +196,7 @@ backend/
 
 ### 5.4 第一阶段 API 字段契约
 
-后端 MVP 当前使用本地模拟商品库和确定性规则，未配置模型 API Key 时走 mock provider。
+后端 MVP 当前已支持 PostgreSQL 商品库优先读取；数据库不可用或无商品数据时自动回退到本地模拟商品库。未配置模型 API Key 时走 mock provider。
 
 - 推荐商品字段：`id`、`name`、`category`、`brand`、`price`、`stock`、`tags`、`specs`、`selling_points`、`after_sales_policy`、`recommendation_reason`。
 - `/chat` 的 `data` 字段：`reply`、`conversation_id`、`intent`、`category`、`slots`、`recommendations`、`next_action`。
@@ -685,6 +685,6 @@ AI 导购有两种形态：
 | 后端实现 | 第一阶段已完成 | 已创建 FastAPI 后端 MVP，提供 health、chat、recommend、compare、handoff、feedback 接口 |
 | 前端实现 | 第一阶段已完成 | 已创建 React + TypeScript + Vite 前端 MVP，覆盖首页、分类/搜索、详情、AI 导购、对比、购物车和后台入口 |
 | 数据库 schema | 第一阶段已完成 | 已定义 SQLAlchemy models 和 Alembic 迁移草案，覆盖核心业务表和 pgvector 索引设计 |
-| 模拟商品库 | 第一阶段已完成 | 已构造本地确定性数码商品数据，支持预算送礼、游戏本、手机、平板、耳机、手表等场景 |
+| 模拟商品库 | 第一阶段已完成 | 已构造 203 条半真实数码商品数据并写入 PostgreSQL，接口优先读数据库并保留内存回退 |
 | 测试体系 | 后端核心测试通过 | 已创建 pytest API/Agent 场景测试；前端 E2E 脚本入口已保留 |
 | Docker 部署 | 未开始 | 待创建 Docker Compose |

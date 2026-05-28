@@ -2,7 +2,10 @@ import re
 from decimal import Decimal
 from typing import Any, Optional
 
+import psycopg
+
 from app.catalog.seed_data import PRODUCTS
+from app.core.config import get_settings
 
 
 CATEGORY_KEYWORDS = {
@@ -59,7 +62,8 @@ def recommend_products(
     if budget_min is not None:
         slots["budget_min"] = budget_min
 
-    products = list(PRODUCTS)
+    catalog = get_catalog_products()
+    products = list(catalog)
     if slots.get("category"):
         products = [item for item in products if item["category"] == slots["category"]]
     if brand:
@@ -71,10 +75,10 @@ def recommend_products(
 
     ranked = sorted(products, key=lambda item: _score_product(item, slots), reverse=True)
     if not ranked and slots.get("category"):
-        relaxed = [item for item in PRODUCTS if item["category"] == slots["category"]]
+        relaxed = [item for item in catalog if item["category"] == slots["category"]]
         ranked = sorted(relaxed, key=lambda item: _score_product(item, slots), reverse=True)
     if not ranked:
-        ranked = sorted(PRODUCTS, key=lambda item: _score_product(item, slots), reverse=True)
+        ranked = sorted(catalog, key=lambda item: _score_product(item, slots), reverse=True)
 
     recommendations = []
     for item in ranked[:limit]:
@@ -91,8 +95,62 @@ def recommend_products(
 
 
 def get_products_by_ids(product_ids: list[str]) -> list[dict[str, Any]]:
-    by_id = {item["id"]: item for item in PRODUCTS}
+    by_id = {item["id"]: item for item in get_catalog_products()}
     return [dict(by_id[product_id]) for product_id in product_ids if product_id in by_id]
+
+
+def get_catalog_products() -> list[dict[str, Any]]:
+    products = load_products_from_db()
+    return products or list(PRODUCTS)
+
+
+def load_products_from_db() -> list[dict[str, Any]]:
+    settings = get_settings()
+    if not settings.database_url:
+        return []
+
+    try:
+        with psycopg.connect(_psycopg_url(settings.database_url)) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT
+                        p.id,
+                        p.name,
+                        p.category,
+                        p.brand,
+                        p.price,
+                        p.stock,
+                        p.tags,
+                        ps.specs,
+                        p.selling_points,
+                        p.after_sales_policy
+                    FROM products p
+                    LEFT JOIN product_specs ps ON ps.product_id = p.id
+                    ORDER BY p.category, p.brand, p.price, p.id
+                    """
+                )
+                return [
+                    {
+                        "id": row[0],
+                        "name": row[1],
+                        "category": row[2],
+                        "brand": row[3],
+                        "price": row[4],
+                        "stock": row[5],
+                        "tags": list(row[6] or []),
+                        "specs": row[7] or {},
+                        "selling_points": list(row[8] or []),
+                        "after_sales_policy": row[9],
+                    }
+                    for row in cur.fetchall()
+                ]
+    except Exception:
+        return []
+
+
+def _psycopg_url(url: str) -> str:
+    return url.replace("postgresql+psycopg://", "postgresql://", 1)
 
 
 def compare_products(product_ids: list[str]) -> dict[str, Any]:

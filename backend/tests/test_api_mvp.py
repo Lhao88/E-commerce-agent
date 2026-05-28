@@ -1,9 +1,20 @@
 from fastapi.testclient import TestClient
+import pytest
 
+from app.core.config import get_settings
 from app.main import app
 
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def use_mock_model_provider(monkeypatch):
+    monkeypatch.setenv("APP_QWEN_API_KEY", "")
+    monkeypatch.setenv("APP_DEEPSEEK_API_KEY", "")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
 
 
 def unwrap(response):
@@ -22,6 +33,19 @@ def test_health_returns_ok_statuses():
     assert data["api"] == "ok"
     assert data["database"] in {"not_configured", "ok"}
     assert data["redis"] in {"not_configured", "ok"}
+
+
+def test_cors_allows_vite_development_origin():
+    response = client.options(
+        "/chat",
+        headers={
+            "Origin": "http://localhost:5173",
+            "Access-Control-Request-Method": "POST",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://localhost:5173"
 
 
 def test_recommend_returns_laptops_for_budget_game_request():
