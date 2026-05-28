@@ -9,8 +9,8 @@ def reset_settings():
 
 
 def test_get_chat_provider_uses_mock_without_api_keys(monkeypatch):
-    monkeypatch.delenv("APP_QWEN_API_KEY", raising=False)
-    monkeypatch.delenv("APP_DEEPSEEK_API_KEY", raising=False)
+    monkeypatch.setenv("APP_QWEN_API_KEY", "")
+    monkeypatch.setenv("APP_DEEPSEEK_API_KEY", "")
     reset_settings()
 
     provider = get_chat_provider()
