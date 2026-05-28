@@ -10,7 +10,12 @@ class Settings(BaseSettings):
     database_url: Optional[str] = None
     redis_url: Optional[str] = None
     qwen_api_key: Optional[str] = None
+    qwen_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    qwen_model_name: str = "qwen3.6-plus"
     deepseek_api_key: Optional[str] = None
+    deepseek_base_url: str = "https://api.deepseek.com"
+    deepseek_model_name: str = "deepseek-v4-flash"
+    model_timeout_seconds: int = 15
 
     model_config = SettingsConfigDict(env_file=".env", env_prefix="APP_", extra="ignore")
 

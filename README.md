@@ -205,6 +205,18 @@ backend/
 - `/handoff` 的 `data` 字段：`ticket_id`、`conversation_id`、`reason`、`summary`、`status`。
 - `/feedback` 的 `data` 字段：`feedback_id`、`conversation_id`、`product_id`、`feedback_type`、`status`。
 
+模型配置通过环境变量注入，禁止提交真实 API Key：
+
+```text
+APP_QWEN_API_KEY=
+APP_QWEN_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+APP_QWEN_MODEL_NAME=qwen3.6-plus
+APP_DEEPSEEK_API_KEY=
+APP_DEEPSEEK_BASE_URL=https://api.deepseek.com
+APP_DEEPSEEK_MODEL_NAME=deepseek-v4-flash
+APP_MODEL_TIMEOUT_SECONDS=15
+```
+
 ## 6. 前端设计
 
 前端不做单一聊天 Demo，而是对标真实电商购物前台：用户可以浏览商品、筛选搜索、查看详情、加入购物车、发起导购咨询、对比商品，并在需要时转人工。AI 导购是购物链路中的智能助手，而不是孤立聊天窗口。
@@ -578,8 +590,8 @@ AI 导购有两种形态：
 - [ ] 实现 pgvector 语义召回。
 - [x] 实现推荐重排。
 - [x] 实现推荐理由生成。
-- [ ] 实现 Qwen3 主模型调用。
-- [ ] 实现 DeepSeek V4 辅助模型调用。
+- [x] 实现 Qwen3 主模型调用。
+- [x] 实现 DeepSeek V4 辅助模型调用。
 - [x] 实现模型超时和降级兜底。
 - [x] 实现复杂问题转人工判断。
 
