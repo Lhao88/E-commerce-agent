@@ -28,7 +28,12 @@ USE_KEYWORDS = {
 }
 
 
-def parse_query(query: str, category: Optional[str] = None, brand: Optional[str] = None) -> dict[str, Any]:
+def parse_query(
+    query: str,
+    category: Optional[str] = None,
+    brand: Optional[str] = None,
+    known_brands: Optional[list[str]] = None,
+) -> dict[str, Any]:
     normalized = query.lower()
     budget_max = _parse_budget(normalized)
     detected_category = category or _detect_category(normalized)
@@ -36,11 +41,13 @@ def parse_query(query: str, category: Optional[str] = None, brand: Optional[str]
         use for use, keywords in USE_KEYWORDS.items() if any(keyword.lower() in normalized for keyword in keywords)
     ]
     recipient = "女生" if "女生" in query or "女友" in query else None
+    excluded_brands = _detect_excluded_brands(query, known_brands or [])
 
     return {
         "budget_max": budget_max,
         "category": detected_category,
         "brand": brand,
+        "excluded_brands": excluded_brands,
         "uses": uses,
         "recipient": recipient,
         "keywords": query,
@@ -56,18 +63,23 @@ def recommend_products(
     budget_max: Optional[int] = None,
     limit: int = 5,
 ) -> dict[str, Any]:
-    slots = parse_query(query, category=category, brand=brand)
+    catalog = get_catalog_products()
+    known_brands = sorted({str(item["brand"]) for item in catalog}, key=len, reverse=True)
+    slots = parse_query(query, category=category, brand=brand, known_brands=known_brands)
     if budget_max is not None:
         slots["budget_max"] = budget_max
     if budget_min is not None:
         slots["budget_min"] = budget_min
 
-    catalog = get_catalog_products()
-    products = list(catalog)
+    sellable_catalog = [item for item in catalog if int(item.get("stock", 0)) > 0]
+    products = list(sellable_catalog)
     if slots.get("category"):
         products = [item for item in products if item["category"] == slots["category"]]
     if brand:
         products = [item for item in products if item["brand"].lower() == brand.lower()]
+    excluded_brands = {item.lower() for item in slots.get("excluded_brands") or []}
+    if excluded_brands:
+        products = [item for item in products if item["brand"].lower() not in excluded_brands]
     if slots.get("budget_max"):
         products = [item for item in products if item["price"] <= Decimal(str(slots["budget_max"]))]
     if slots.get("budget_min"):
@@ -75,10 +87,15 @@ def recommend_products(
 
     ranked = sorted(products, key=lambda item: _score_product(item, slots), reverse=True)
     if not ranked and slots.get("category"):
-        relaxed = [item for item in catalog if item["category"] == slots["category"]]
+        relaxed = [
+            item
+            for item in sellable_catalog
+            if item["category"] == slots["category"] and item["brand"].lower() not in excluded_brands
+        ]
         ranked = sorted(relaxed, key=lambda item: _score_product(item, slots), reverse=True)
     if not ranked:
-        ranked = sorted(catalog, key=lambda item: _score_product(item, slots), reverse=True)
+        fallback = [item for item in sellable_catalog if item["brand"].lower() not in excluded_brands]
+        ranked = sorted(fallback, key=lambda item: _score_product(item, slots), reverse=True)
 
     recommendations = []
     for item in ranked[:limit]:
@@ -193,6 +210,16 @@ def _detect_category(query: str) -> Optional[str]:
         if any(keyword.lower() in query for keyword in keywords):
             return category
     return None
+
+
+def _detect_excluded_brands(query: str, known_brands: list[str]) -> list[str]:
+    markers = ("不要", "不想要", "不考虑", "排除", "别推荐")
+    normalized = query.lower()
+    return [
+        brand
+        for brand in known_brands
+        if any(f"{marker}{brand}".lower() in normalized or f"{marker} {brand}".lower() in normalized for marker in markers)
+    ]
 
 
 def _score_product(product: dict[str, Any], slots: dict[str, Any]) -> int:

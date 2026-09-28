@@ -104,6 +104,7 @@ type RecommendData = {
     budget_min?: number | null;
     category?: Product["category"] | null;
     brand?: string | null;
+    excluded_brands?: string[];
     uses?: string[];
     recipient?: string | null;
     keywords?: string;
@@ -138,7 +139,7 @@ type ChatRequest = {
 type ChatData = {
   reply: string;
   conversation_id: string;
-  intent: "recommend" | "handoff";
+  intent: "recommend" | "compare" | "handoff";
   category: Product["category"] | null;
   slots: Record<string, unknown>;
   recommendations: Product[];
